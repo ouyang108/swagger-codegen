@@ -30,6 +30,10 @@
     "name": "ouyang108",
     "url": "https://github.com/ouyang108"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ouyang108/swagger-codegen"
+  },
   "license": "ISC",
   "packageManager": "pnpm@10.7.1",
   "devDependencies": {
