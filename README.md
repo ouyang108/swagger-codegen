@@ -1,5 +1,3 @@
-# 暂时没有发布到npm
-
 # swagger-codegen
 
 
@@ -18,15 +16,15 @@
 ## 安装
 
 ```bash
-npm install -g swagger-codegen
+npm install -g @ouyangtianfeng/swagger-codegen
 # 或
-pnpm add -g swagger-codegen
+pnpm add -g @ouyangtianfeng/swagger-codegen
 ```
 
 ## 使用
 
 ```bash
-swagger init <url> [--out <dir>]
+swagger-codegen init <url> [--out <dir>]
 ```
 
 | 参数 | 说明 | 默认值 |
@@ -38,13 +36,16 @@ swagger init <url> [--out <dir>]
 
 ```bash
 # 远程 URL，输出到 ./output
-swagger init https://petstore.swagger.io/v2/swagger.json
+swagger-codegen init https://petstore.swagger.io/v2/swagger.json
 
 # 指定输出目录
-swagger init https://petstore.swagger.io/v2/swagger.json --out src/api
+swagger-codegen init https://petstore.swagger.io/v2/swagger.json --out src/api
 
 # 本地文件
-swagger init ./swagger.json --out src/api
+swagger-codegen init ./swagger.json --out src/api
+
+# 或通过 npx 直接使用（无需安装）
+npx @ouyangtianfeng/swagger-codegen init https://petstore.swagger.io/v2/swagger.json
 ```
 
 ## 输出结构
