@@ -10,7 +10,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "commit": "czg",
-    "prepare": "simple-git-hooks",
+    "prepare": "node -e \"if(process.env.npm_config_global || !require('fs').existsSync('.git')) process.exit(0)\" && simple-git-hooks || true",
     "build": "tsdown",
     "dev": "node index.ts"
   },
