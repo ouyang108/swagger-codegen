@@ -1,9 +1,12 @@
 {
-  "name": "swagger-codegen",
-  "version": "1.0.0",
+  "name": "@ouyang108/swagger-codegen",
+  "version": "1.0.1",
   "description": "",
   "main": "index.js",
   "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "commit": "czg",
@@ -12,7 +15,7 @@
     "dev": "node index.ts"
   },
   "bin": {
-    "swagger-codegen": "./dist/index.js"
+    "@ouyang108/swagger-codegen": "./dist/index.js"
   },
   "files": [
     "dist",
