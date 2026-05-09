@@ -118,7 +118,26 @@ function getResponseSchema(operation: any): any {
   return resp.schema ?? null;
 }
 
-// ─── 函数名生成 ───────────────────────────────────────────────────────────────
+// ─── 路径工具 ─────────────────────────────────────────────────────────────────
+
+/**
+ * 找出所有路径的公共前缀段（跳过路径参数段），至少保留一段有效分组名
+ * 例如 ["/api/v1/user", "/api/v1/user/{id}"] → "/api/v1"
+ */
+function findCommonPrefix(urlPaths: string[]): string {
+  if (urlPaths.length === 0) return "";
+  const segs = urlPaths.map((p) => p.split("/").filter(Boolean));
+  const minLen = Math.min(...segs.map((s) => s.length));
+  const common: string[] = [];
+
+  for (let i = 0; i < minLen - 1; i++) {
+    const seg = segs[0][i];
+    // 含路径参数或各路径在此位不同则停止
+    if (seg.startsWith("{") || !segs.every((s) => s[i] === seg)) break;
+    common.push(seg);
+  }
+  return common.length ? "/" + common.join("/") : "";
+}
 
 /** 路径段转 PascalCase，路径参数 {id} → ById */
 function segmentToPascal(seg: string): string {
@@ -129,15 +148,33 @@ function segmentToPascal(seg: string): string {
   return seg.charAt(0).toUpperCase() + seg.slice(1);
 }
 
-/** /user/login + post → postUserLogin */
-function buildFunctionName(urlPath: string, method: string): string {
-  const pascal = urlPath.split("/").filter(Boolean).map(segmentToPascal).join("");
-  return method.toLowerCase() + pascal;
+/** 去掉公共前缀后，取第一段作为分组目录 */
+function getGroup(urlPath: string, prefix: string): string {
+  const stripped = prefix ? urlPath.slice(prefix.length) : urlPath;
+  return stripped.split("/").filter(Boolean)[0] ?? "common";
 }
 
-/** 取 URL 第一段作为分组目录，/user/login → user */
-function getGroup(urlPath: string): string {
-  return urlPath.split("/").filter(Boolean)[0] ?? "common";
+/** 基于去掉前缀后的路径生成函数名 */
+function buildFunctionName(urlPath: string, method: string, prefix: string): string {
+  const stripped = prefix ? urlPath.slice(prefix.length) : urlPath;
+  const pascal = stripped.split("/").filter(Boolean).map(segmentToPascal).join("");
+  return method.toLowerCase() + (pascal || "Root");
+}
+
+/**
+ * 若响应 schema 是 { data: T } 包装结构则自动拆包，取 data 的 schema
+ * 兼容 NestJS 统一响应格式
+ */
+function unwrapDataSchema(schema: any): any {
+  if (
+    schema?.type === "object" &&
+    schema.properties &&
+    Object.keys(schema.properties).length === 1 &&
+    schema.properties.data
+  ) {
+    return schema.properties.data;
+  }
+  return schema;
 }
 
 // ─── 代码生成 ─────────────────────────────────────────────────────────────────
@@ -233,7 +270,15 @@ export function generateCode(api: OpenAPI.Document, outDir = "./output"): void {
     Object.keys(doc.definitions ?? doc.components?.schemas ?? {}),
   );
 
-  // 按 URL 第一段分组
+  const allPaths = Object.keys(paths);
+
+  // 检测公共路径前缀（如 /api/v1），分组时跳过
+  const commonPrefix = findCommonPrefix(allPaths);
+  if (commonPrefix) {
+    console.log(pc.gray(`  检测到公共前缀 "${commonPrefix}"，已自动跳过`));
+  }
+
+  // 按有效分组段归类
   const groups = new Map<string, EndpointEntry[]>();
 
   for (const [urlPath, pathItem] of Object.entries(paths)) {
@@ -244,7 +289,7 @@ export function generateCode(api: OpenAPI.Document, outDir = "./output"): void {
       const operation = (pathItem as any)[method] as any;
       if (!operation) continue;
 
-      const group = getGroup(urlPath);
+      const group = getGroup(urlPath, commonPrefix);
       if (!groups.has(group)) groups.set(group, []);
 
       groups.get(group)!.push({
@@ -252,7 +297,8 @@ export function generateCode(api: OpenAPI.Document, outDir = "./output"): void {
         method,
         operationId: operation.operationId,
         requestSchema: getRequestSchema(operation),
-        responseSchema: getResponseSchema(operation),
+        // 拆包 { data: T } 响应结构
+        responseSchema: unwrapDataSchema(getResponseSchema(operation)),
       });
     }
   }
@@ -289,7 +335,9 @@ export function generateCode(api: OpenAPI.Document, outDir = "./output"): void {
         if (refName && globalSchemas.has(refName)) usedTypes.add(refName);
       }
 
-      return buildFunction(urlPath, method, operationId, reqType, resType);
+      // operationId 含下划线时取最后一段（NestJS 格式：Controller_method_v1 → method）
+      const cleanId = operationId?.split("_").slice(1, -1).join("_") || operationId;
+      return buildFunction(urlPath, method, cleanId, reqType, resType);
     });
 
     // 生成 types 导入行

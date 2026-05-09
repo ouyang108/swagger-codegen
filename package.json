@@ -48,7 +48,6 @@
     "path": "node_modules/cz-git"
   },
   "dependencies": {
-    "@apidevtools/swagger-parser": "^12.1.0",
     "cac": "^7.0.0",
     "fs-extra": "^11.3.4",
     "pathe": "^2.0.3",
