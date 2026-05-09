@@ -1,5 +1,5 @@
 {
-  "name": "@ouyang108/swagger-codegen",
+  "name": "@ouyangtianfeng/swagger-codegen",
   "version": "1.0.2",
   "description": "",
   "main": "index.js",
@@ -15,7 +15,7 @@
     "dev": "node index.ts"
   },
   "bin": {
-    "@ouyang108/swagger-codegen": "./dist/index.js"
+    "swagger-codegen": "./dist/index.js"
   },
   "files": [
     "dist",
