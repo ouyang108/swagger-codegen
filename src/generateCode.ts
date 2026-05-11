@@ -23,7 +23,8 @@ function schemaToTS(schema: any): string {
   switch (schema.type) {
     case "string":
       // 枚举类型生成联合字面量
-      if (schema.enum) return schema.enum.map((e: string) => `"${e}"`).join(" | ");
+      if (schema.enum)
+        return schema.enum.map((e: string) => `"${e}"`).join(" | ");
       return "string";
     case "integer":
     case "number":
@@ -85,7 +86,9 @@ function getRequestSchema(operation: any): any {
   }
 
   // Swagger v2: body 参数
-  const bodyParam = (operation.parameters ?? []).find((p: any) => p.in === "body");
+  const bodyParam = (operation.parameters ?? []).find(
+    (p: any) => p.in === "body",
+  );
   if (bodyParam?.schema) return bodyParam.schema;
 
   // 查询参数：构造虚拟 object schema
@@ -155,9 +158,17 @@ function getGroup(urlPath: string, prefix: string): string {
 }
 
 /** 基于去掉前缀后的路径生成函数名 */
-function buildFunctionName(urlPath: string, method: string, prefix: string): string {
+function buildFunctionName(
+  urlPath: string,
+  method: string,
+  prefix?: string,
+): string {
   const stripped = prefix ? urlPath.slice(prefix.length) : urlPath;
-  const pascal = stripped.split("/").filter(Boolean).map(segmentToPascal).join("");
+  const pascal = stripped
+    .split("/")
+    .filter(Boolean)
+    .map(segmentToPascal)
+    .join("");
   return method.toLowerCase() + (pascal || "Root");
 }
 
@@ -209,13 +220,7 @@ export const ${fnName} = async (data: ${requestType}): Promise<{ promise: Promis
 
 /** 文件头注释 + import */
 function buildHeader(extraImports: string): string {
-  const now = new Date().toISOString().replace("T", " ").slice(0, 19);
-  return `/*
- * @Author       : Cheng Chao(2205593667@qq.com)
- * @Version      : V1.0
- * @Date         : ${now}
- * @Description  :
- */
+  return `
 import request from '@/request/index';
 ${extraImports}`;
 }
@@ -230,20 +235,11 @@ function buildTypesFile(api: OpenAPI.Document): string {
   const schemas: Record<string, any> =
     doc.definitions ?? doc.components?.schemas ?? {};
 
-  const now = new Date().toISOString().replace("T", " ").slice(0, 19);
-  const header = `/*
- * @Author       : Cheng Chao(2205593667@qq.com)
- * @Version      : V1.0
- * @Date         : ${now}
- * @Description  : Auto-generated types from Swagger/OpenAPI document
- */
-`;
-
   const defs = Object.entries(schemas)
     .map(([name, schema]) => schemaToInterface(name, schema))
     .join("\n\n");
 
-  return header + "\n" + defs + "\n";
+  return defs + "\n";
 }
 
 // ─── 入口 ─────────────────────────────────────────────────────────────────────
@@ -311,34 +307,39 @@ export function generateCode(api: OpenAPI.Document, outDir = "./output"): void {
   }
 
   const total = groups.size;
-  console.log(pc.cyan(`⠿ 共发现 ${pc.bold(String(total))} 个分组，开始生成文件...`));
+  console.log(
+    pc.cyan(`⠿ 共发现 ${pc.bold(String(total))} 个分组，开始生成文件...`),
+  );
 
   let fileCount = 0;
   for (const [group, entries] of groups) {
     // 收集本文件引用到的全局类型名，生成 import 语句
     const usedTypes = new Set<string>();
 
-    const functions = entries.map(({ urlPath, method, operationId, requestSchema, responseSchema }) => {
-      // 解析请求类型
-      let reqType = "any";
-      if (requestSchema) {
-        const refName = requestSchema.$ref?.split("/").pop();
-        reqType = refName ?? schemaToTS(requestSchema);
-        if (refName && globalSchemas.has(refName)) usedTypes.add(refName);
-      }
+    const functions = entries.map(
+      ({ urlPath, method, operationId, requestSchema, responseSchema }) => {
+        // 解析请求类型
+        let reqType = "any";
+        if (requestSchema) {
+          const refName = requestSchema.$ref?.split("/").pop();
+          reqType = refName ?? schemaToTS(requestSchema);
+          if (refName && globalSchemas.has(refName)) usedTypes.add(refName);
+        }
 
-      // 解析响应类型
-      let resType = "void";
-      if (responseSchema) {
-        const refName = responseSchema.$ref?.split("/").pop();
-        resType = refName ?? schemaToTS(responseSchema);
-        if (refName && globalSchemas.has(refName)) usedTypes.add(refName);
-      }
+        // 解析响应类型
+        let resType = "void";
+        if (responseSchema) {
+          const refName = responseSchema.$ref?.split("/").pop();
+          resType = refName ?? schemaToTS(responseSchema);
+          if (refName && globalSchemas.has(refName)) usedTypes.add(refName);
+        }
 
-      // operationId 含下划线时取最后一段（NestJS 格式：Controller_method_v1 → method）
-      const cleanId = operationId?.split("_").slice(1, -1).join("_") || operationId;
-      return buildFunction(urlPath, method, cleanId, reqType, resType);
-    });
+        // operationId 含下划线时取最后一段（NestJS 格式：Controller_method_v1 → method）
+        const cleanId =
+          operationId?.split("_").slice(1, -1).join("_") || operationId;
+        return buildFunction(urlPath, method, cleanId, reqType, resType);
+      },
+    );
 
     // 生成 types 导入行
     const importLine =
@@ -359,5 +360,8 @@ export function generateCode(api: OpenAPI.Document, outDir = "./output"): void {
     );
   }
 
-  console.log(pc.green(`\n✔ 生成完成`) + pc.gray(` — 共 ${fileCount} 个文件输出至 ${outDir}`));
+  console.log(
+    pc.green(`\n✔ 生成完成`) +
+      pc.gray(` — 共 ${fileCount} 个文件输出至 ${outDir}`),
+  );
 }
